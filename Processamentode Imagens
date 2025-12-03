@@ -1,0 +1,279 @@
+import tensorflow as tf
+
+# Define constants for image processing
+IMG_HEIGHT = 128
+IMG_WIDTH = 128
+BATCH_SIZE = 32
+
+print(f"Image Height: {IMG_HEIGHT}")
+print(f"Image Width: {IMG_WIDTH}")
+print(f"Batch Size: {BATCH_SIZE}")
+
+data_dir = 'data/' # Replace with the actual path to your image dataset
+
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    labels='inferred',
+    label_mode='binary',
+    validation_split=0.2,
+    subset='training',
+    seed=123,
+    image_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE
+)
+
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    labels='inferred',
+    label_mode='binary',
+    validation_split=0.2,
+    subset='validation',
+    seed=123,
+    image_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE
+)
+
+print("Dataset loaded successfully.")
+
+import os
+import shutil
+from PIL import Image
+import numpy as np
+
+# IMPORTANT: Replace 'data/' with the actual path to your image dataset.
+# The dataset should be structured with subdirectories for each class (e.g., data/class_a/, data/class_b/).
+data_dir = 'data/' 
+
+# --- FIX: Create a dummy dataset if 'data/' is not found or is empty ---
+# This ensures the code can run for demonstration purposes. Users should replace this with their real data.
+if not os.path.exists(data_dir) or not os.listdir(data_dir):
+    print(f"Directory '{data_dir}' not found or is empty. Creating a dummy dataset for demonstration.")
+    if os.path.exists(data_dir):
+        shutil.rmtree(data_dir) # Clean up if it exists but is empty/malformed
+    os.makedirs(data_dir)
+
+    classes = ['class_a', 'class_b'] # Example classes
+    for cls in classes:
+        class_dir = os.path.join(data_dir, cls)
+        os.makedirs(class_dir, exist_ok=True)
+        # Create a few dummy image files
+        for i in range(5): # 5 dummy images per class for demonstration
+            dummy_image_path = os.path.join(class_dir, f'dummy_img_{i}.png')
+            # Create a simple blank image (white background with a small black square)
+            dummy_image_array = np.full((IMG_HEIGHT, IMG_WIDTH, 3), 255, dtype=np.uint8) # White background
+            # Draw a small black square for visual distinction (optional)
+            dummy_image_array[IMG_HEIGHT//4:IMG_HEIGHT//2, IMG_WIDTH//4:IMG_WIDTH//2] = [0, 0, 0] # Black square
+            dummy_image = Image.fromarray(dummy_image_array)
+            dummy_image.save(dummy_image_path)
+    print(f"Dummy dataset created successfully in '{data_dir}' with '{classes[0]}' and '{classes[1]}' subdirectories. Please replace with your actual dataset.")
+else:
+    print(f"Using existing data in '{data_dir}'. Please ensure it is structured with subdirectories for classes (e.g., data/class_a/, data/class_b/).")
+# --- END FIX ---
+
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    labels='inferred',
+    label_mode='binary',
+    validation_split=0.2,
+    subset='training',
+    seed=123,
+    image_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE
+)
+
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    labels='inferred',
+    label_mode='binary',
+    validation_split=0.2,
+    subset='validation',
+    seed=123,
+    image_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE
+)
+
+print("Dataset loaded successfully.")
+
+def normalize_img(image, label):
+  """Normalizes images: `uint8` -> `float32`."""
+  return tf.cast(image, tf.float32) / 255.0, label
+
+train_ds = train_ds.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
+val_ds = val_ds.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
+
+print("Images in training and validation datasets normalized to [0, 1].")
+
+train_ds = train_ds.cache().prefetch(buffer_size=tf.data.AUTOTUNE)
+val_ds = val_ds.cache().prefetch(buffer_size=tf.data.AUTOTUNE)
+
+print("Training and validation datasets configured for performance with caching and prefetching.")
+
+num_train_images = tf.data.experimental.cardinality(train_ds).numpy() * BATCH_SIZE
+num_val_images = tf.data.experimental.cardinality(val_ds).numpy() * BATCH_SIZE
+
+class_names = train_ds.class_names
+
+print(f"Dataset Characteristics Overview:")
+print(f"  Number of training images: {num_train_images}")
+print(f"  Number of validation images: {num_val_images}")
+print(f"  Image dimensions: ({IMG_HEIGHT}, {IMG_WIDTH})")
+print(f"  Class names: {class_names}")
+
+num_train_images = tf.data.experimental.cardinality(train_ds).numpy() * BATCH_SIZE
+num_val_images = tf.data.experimental.cardinality(val_ds).numpy() * BATCH_SIZE
+
+initial_train_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    labels='inferred',
+    label_mode='binary',
+    validation_split=0.2,
+    subset='training',
+    seed=123,
+    image_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE
+)
+class_names = initial_train_ds.class_names
+
+print(f"Dataset Characteristics Overview:")
+print(f"  Number of training images: {num_train_images}")
+print(f"  Number of validation images: {num_val_images}")
+print(f"  Image dimensions: ({IMG_HEIGHT}, {IMG_WIDTH})")
+print(f"  Class names: {class_names}")
+
+from tensorflow.keras import layers, models
+
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
+
+# 10. Compile the model
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# 11. Print a summary of the model's architecture
+model.summary()
+
+print("CNN model defined and compiled successfully.")
+
+from tensorflow.keras import layers, models
+from tensorflow.keras import Input
+
+# 2. Initialize a tf.keras.Sequential model.
+model = models.Sequential([
+    # FIX: Use an Input layer to explicitly define the input shape to remove the UserWarning.
+    Input(shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    # 3. Add a Conv2D layer
+    layers.Conv2D(32, (3, 3), activation='relu'),
+    # 4. Add a MaxPooling2D layer
+    layers.MaxPooling2D((2, 2)),
+    # 5. Add another Conv2D layer
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    # 6. Add another MaxPooling2D layer
+    layers.MaxPooling2D((2, 2)),
+    # 7. Flatten the output
+    layers.Flatten(),
+    # 8. Add one or more Dense layers
+    layers.Dense(128, activation='relu'),
+    # 9. Add a final Dense layer for binary classification
+    layers.Dense(1, activation='sigmoid')
+])
+
+# 10. Compile the model
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# 11. Print a summary of the model's architecture
+model.summary()
+
+print("CNN model defined and compiled successfully (warning addressed).")
+
+EPOCHS = 10
+
+print(f"Starting model training for {EPOCHS} epochs...")
+
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=EPOCHS
+)
+
+print("Model training completed.")
+
+import matplotlib.pyplot as plt
+
+# Get the history data
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs_range = range(EPOCHS)
+
+# Plot training and validation accuracy
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label='Training Accuracy')
+plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+plt.legend(loc='lower right')
+plt.title('Training and Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.grid(True)
+
+# Plot training and validation loss
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label='Training Loss')
+plt.plot(epochs_range, val_loss, label='Validation Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True)
+
+plt.show()
+
+print("Training history plots generated successfully.")
+
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+import numpy as np
+
+print("Evaluation metrics imported successfully.")
+
+y_pred_probs = model.predict(val_ds)
+y_pred = (y_pred_probs > 0.5).astype(int)
+
+y_true = []
+for _, labels in val_ds:
+    y_true.extend(labels.numpy().flatten())
+
+y_true = np.array(y_true)
+
+print("Predictions and true labels generated successfully.")
+
+cm = confusion_matrix(y_true, y_pred)
+accuracy = accuracy_score(y_true, y_pred)
+precision = precision_score(y_true, y_pred)
+recall = recall_score(y_true, y_pred)
+f1 = f1_score(y_true, y_pred)
+
+print("\n--- Model Evaluation Metrics ---")
+print(f"Confusion Matrix:\n{cm}")
+print(f"Accuracy: {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall: {recall:.4f}")
+print(f"F1-Score: {f1:.4f}")
+
+# Interpretation of metrics
+print("\n--- Interpretation ---")
+print("  - Accuracy: Proportion of correctly classified instances out of the total.")
+print("  - Precision: Proportion of true positive predictions among all positive predictions. High precision means fewer false positives.")
+print("  - Recall: Proportion of true positive predictions among all actual positive instances. High recall means fewer false negatives.")
+print("  - F1-Score: Harmonic mean of precision and recall, balancing both metrics.")
+print("  - Confusion Matrix: Shows the counts of true negatives, false positives, false negatives, and true positives.")
